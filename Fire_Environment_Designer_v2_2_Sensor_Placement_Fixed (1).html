@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fire Detection Environment Designer v2.2 — Visible Sensor Placement</title>
+<style>
+:root{
+  --bg:#07101c; --panel:#0d1726; --panel2:#111e30; --line:#23344d; --text:#eef5ff; --muted:#8da2bd;
+  --accent:#5bbcff; --accent2:#8d7cff; --good:#42d392; --warn:#ffca57; --bad:#ff6b75;
+}
+*{box-sizing:border-box} html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+button,input,select{font:inherit}.app{height:100%;display:grid;grid-template-rows:64px 1fr 48px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#0e1a2a,#0a1421)}
+.brand{display:flex;gap:12px;align-items:center}.logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-weight:900;color:#06101d}.brand b{font-size:15px}.brand span{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.actions{display:flex;gap:8px}.btn{border:1px solid var(--line);color:var(--text);background:#122138;border-radius:9px;padding:9px 12px;cursor:pointer}.btn:hover{border-color:#486587}.btn.primary{background:linear-gradient(135deg,#1787d8,#6b58e8);border:0}.btn.good{background:#143c31;border-color:#265d4e}.btn.small{padding:6px 8px;font-size:12px}
+.main{min-height:0;display:grid;grid-template-columns:320px minmax(420px,1fr) 390px}.left,.right{background:var(--panel);overflow:auto}.left{border-right:1px solid var(--line)}.right{border-left:1px solid var(--line)}
+.viewport{position:relative;min-width:0;background:radial-gradient(circle at 50% 30%,#13233a,#050b13 68%)}#scene{position:absolute;inset:0}.sensor-overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:8}.sensor-screen-tag{position:absolute;transform:translate(-50%,-115%);min-width:112px;padding:6px 8px;border-radius:8px;background:#06101dea;border:1px solid currentColor;box-shadow:0 6px 22px #0009;font-size:10px;line-height:1.25;font-weight:700;text-align:center;white-space:nowrap;backdrop-filter:blur(5px)}.sensor-screen-tag .pin{display:inline-block;width:9px;height:9px;border-radius:50%;background:currentColor;box-shadow:0 0 0 4px currentColor,0 0 18px currentColor;margin-right:6px;vertical-align:-1px}.sensor-screen-tag small{display:block;margin-top:3px;color:#d4e4f8;font-size:9px;font-weight:500}.sensor-screen-tag.thermal{color:#ff7a69}.sensor-screen-tag.co{color:#6ce0a7}.sensor-screen-tag.pm{color:#c899ff}.sensor-screen-tag.offscreen{opacity:.35}.view-toolbar{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none}.pill{pointer-events:auto;background:#0b1522d9;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12px;color:#cde0f7;backdrop-filter:blur(8px)}
+.section{padding:16px;border-bottom:1px solid var(--line)}.section h3{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#adc1da}.sub{font-size:11px;color:var(--muted);margin:8px 0}
+.row{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin:9px 0}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.field label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}.input,select{width:100%;color:var(--text);background:#091421;border:1px solid var(--line);border-radius:8px;padding:8px 9px;outline:none}.input:focus,select:focus{border-color:var(--accent)}input[type=range]{width:100%}.value{font-size:12px;text-align:right;color:#cde0f7}
+.toggle{display:flex;align-items:center;justify-content:space-between;margin:8px 0}.switch{width:38px;height:22px;border-radius:999px;background:#26364a;position:relative;cursor:pointer}.switch:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:white;top:3px;left:3px;transition:.2s}.switch.on{background:#267bd0}.switch.on:after{left:19px}
+.sensor-grid{display:grid;grid-template-columns:1fr 56px;gap:7px}.addline{display:grid;grid-template-columns:1fr 70px;gap:7px;margin-top:8px}.chip{display:inline-flex;gap:6px;align-items:center;padding:5px 7px;border-radius:7px;background:#122033;border:1px solid var(--line);font-size:11px;margin:3px 3px 0 0}.dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}.card-title{font-size:12px;font-weight:700}.card-value{font-size:26px;font-weight:800;margin:7px 0}.tiny{font-size:11px;color:var(--muted);line-height:1.45}.bar{height:7px;background:#07111c;border-radius:99px;overflow:hidden;margin-top:8px}.bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%}
+.device{padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:#0a1523;margin:7px 0}.device-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.device-name{font-size:12px;font-weight:700}.device-meta{font-size:10px;color:var(--muted);margin-top:4px}.tag{font-size:9px;padding:3px 6px;border-radius:6px;background:#182940;color:#bcd2ee}.remove{border:0;background:transparent;color:#ff8791;cursor:pointer;font-size:13px}
+.footer{display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:#08111e;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}.status{display:flex;gap:14px}.status b{color:#dcecff}
+.modal{position:fixed;inset:0;background:#02060db8;display:none;place-items:center;z-index:20}.modal.show{display:grid}.modal-box{width:min(720px,92vw);max-height:84vh;overflow:auto;background:#0c1726;border:1px solid #2c405d;border-radius:15px;padding:18px;box-shadow:0 30px 80px #0008}.modal h2{margin:0 0 12px;font-size:18px}.report{white-space:pre-wrap;background:#07111d;border:1px solid var(--line);padding:14px;border-radius:10px;color:#d6e6f8;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:1.6}.close{float:right}.notice{background:#10213a;border:1px solid #28486e;border-radius:9px;padding:9px 10px;font-size:11px;color:#bcd4ef;margin-top:8px}.rec{border-left:3px solid var(--accent);padding:8px 9px;background:#0a1625;margin:7px 0;border-radius:6px}.rec b{font-size:11px}.rec p{margin:3px 0 0;font-size:10px;color:var(--muted)}
+.coord-card{border:1px solid var(--line);background:#091522;border-radius:10px;padding:10px;margin:8px 0}.coord-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.coord-name{font-size:12px;font-weight:800}.coord-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}.coord-cell{background:#0d1b2c;border:1px solid #20344e;border-radius:7px;padding:6px;text-align:center}.coord-cell span{display:block;font-size:9px;color:var(--muted)}.coord-cell b{display:block;margin-top:2px;font-size:12px}.coord-note{font-size:10px;line-height:1.45;color:#9fb4cc;margin-top:7px}.basis{display:inline-block;margin-top:6px;font-size:9px;padding:3px 6px;border-radius:999px;background:#152944;color:#b9d9f6;border:1px solid #284765}.legendbox{background:#0a1625;border:1px dashed #315275;padding:9px;border-radius:9px;font-size:10px;color:#b6cbe3;line-height:1.5}.refitem{padding:9px 0;border-bottom:1px solid #1c2b40}.refitem:last-child{border-bottom:0}.refitem b{font-size:11px}.refitem p{margin:4px 0 0;font-size:10px;color:var(--muted);line-height:1.5}.badge-source{font-size:9px;background:#183b31;color:#99e6c5;padding:3px 6px;border-radius:6px}.badge-heuristic{font-size:9px;background:#3b2e18;color:#ffd78c;padding:3px 6px;border-radius:6px}
+@media(max-width:1100px){.main{grid-template-columns:280px 1fr}.right{display:none}.actions .hide-sm{display:none}} 
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><div class="logo">FD</div><div><b>Fire Detection Environment Designer</b><span>Reference-informed 3D test-room, sensor coordinate & placement simulator · v2.2</span></div></div>
+    <div class="actions">
+      <button class="btn" id="resetBtn">Reset</button>
+      <button class="btn hide-sm" id="saveBtn">Save Scenario</button>
+      <button class="btn hide-sm" id="loadBtn">Load Scenario</button>
+      <button class="btn hide-sm" id="referenceBtn">Reference Basis</button>
+      <button class="btn primary" id="autoBtn">✦ Auto Design</button>
+      <input id="fileInput" type="file" accept="application/json" hidden />
+    </div>
+  </header>
+
+  <main class="main">
+    <aside class="left">
+      <div class="section">
+        <h3>Room Geometry</h3>
+        <div class="row"><div><label>Width <span class="tiny">(m)</span></label><input id="widthR" type="range" min="2" max="30" step="0.5" value="8"></div><input id="widthN" class="input" type="number" min="2" max="30" step="0.5" value="8"></div>
+        <div class="row"><div><label>Length <span class="tiny">(m)</span></label><input id="lengthR" type="range" min="2" max="40" step="0.5" value="10"></div><input id="lengthN" class="input" type="number" min="2" max="40" step="0.5" value="10"></div>
+        <div class="row"><div><label>Height <span class="tiny">(m)</span></label><input id="heightR" type="range" min="2" max="10" step="0.1" value="3"></div><input id="heightN" class="input" type="number" min="2" max="10" step="0.1" value="3"></div>
+        <div class="row3">
+          <div class="field"><label>Room type</label><select id="roomType"><option>Test chamber</option><option>Factory room</option><option>Warehouse</option><option>Office/lab</option></select></div>
+          <div class="field"><label>Grid</label><select id="gridSize"><option value="1">1 m</option><option value="0.5">0.5 m</option></select></div>
+          <div class="field"><label>Walls</label><select id="wallMode"><option value="glass">Glass</option><option value="solid">Solid</option><option value="wire">Wire</option></select></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Camera System</h3>
+        <div class="field"><label>Camera model</label><select id="cameraModel"><option value="oakd">Luxonis OAK-D</option><option value="c310">Logitech C310</option><option value="custom">Custom RGB Camera</option></select></div>
+        <div class="row3" style="margin-top:9px">
+          <div class="field"><label>H-FOV</label><input id="hfov" class="input" type="number" value="81" min="20" max="150"></div>
+          <div class="field"><label>V-FOV</label><input id="vfov" class="input" type="number" value="55" min="20" max="120"></div>
+          <div class="field"><label>Qty</label><input id="camQty" class="input" type="number" value="1" min="1" max="8"></div>
+        </div>
+        <div class="field" style="margin-top:9px"><label>Mount strategy</label><select id="mountStrategy"><option value="corner">Upper corner</option><option value="opposite">Opposite corners</option><option value="ceiling">Ceiling perimeter</option></select></div>
+        <button class="btn good" id="placeCamBtn" style="width:100%;margin-top:10px">Place / Update Camera</button>
+        <div class="notice">FOV values are editable design inputs. Use verified manufacturer values when preparing the final real installation.</div>
+      </div>
+
+      <div class="section">
+        <h3>Sensor Library</h3>
+        <div class="field"><label>Thermal</label><div class="addline"><select id="thermalModel"><option value="mlx90640">MLX90640</option><option value="amg8833">AMG8833</option><option value="customThermal">Custom thermal</option></select><input id="thermalQty" class="input" type="number" value="1" min="1" max="12"></div></div>
+        <div class="field" style="margin-top:9px"><label>CO</label><div class="addline"><select id="coModel"><option value="ze07co">Winzen ZE07-CO</option><option value="genericCO">Generic CO</option></select><input id="coQty" class="input" type="number" value="1" min="1" max="12"></div></div>
+        <div class="field" style="margin-top:9px"><label>Particulate Matter</label><div class="addline"><select id="pmModel"><option value="pms5003">Plantower PMS5003</option><option value="pms7003">Plantower PMS7003</option><option value="genericPM">Generic PM</option></select><input id="pmQty" class="input" type="number" value="1" min="1" max="12"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px"><button class="btn" id="addSensorsBtn">Add Sensors</button><button class="btn" id="autoPlaceBtn">Auto Place</button></div>
+        <div class="field" style="margin-top:10px"><label>Placement policy</label><select id="placementPolicy"><option value="balanced">Balanced room monitoring</option><option value="scenario">Scenario-aware test setup</option></select></div>
+        <div class="notice"><b>Coordinate system:</b> origin (0,0,0) = center of floor, +Y = upward. Recommended coordinates are engineering design heuristics derived from the project sensing roles and room geometry; they are not certified detector-spacing rules.</div>
+      </div>
+
+      <div class="section">
+        <h3>Environment Scenario</h3>
+        <div class="toggle"><span>🔥 Fire source</span><div class="switch on" data-key="fire"></div></div>
+        <div class="toggle"><span>🌫 Smoke</span><div class="switch on" data-key="smoke"></div></div>
+        <div class="row"><div><label>Smoke density</label><input id="smokeR" type="range" min="0" max="100" value="35"></div><div class="value"><span id="smokeV">35</span>%</div></div>
+        <div class="toggle"><span>◌ Dust</span><div class="switch on" data-key="dust"></div></div>
+        <div class="row"><div><label>Dust density</label><input id="dustR" type="range" min="0" max="100" value="60"></div><div class="value"><span id="dustV">60</span>%</div></div>
+        <div class="row"><div><label>Ambient light</label><input id="lightR" type="range" min="0" max="100" value="65"></div><div class="value"><span id="lightV">65</span>%</div></div>
+        <div class="sub">Fire position (% of room)</div>
+        <div class="row3"><div class="field"><label>X</label><input id="fireX" class="input" type="number" value="65" min="0" max="100"></div><div class="field"><label>Z</label><input id="fireZ" class="input" type="number" value="58" min="0" max="100"></div><div class="field"><label>Size</label><select id="fireSize"><option value="0.6">S</option><option value="1" selected>M</option><option value="1.5">L</option></select></div></div>
+      </div>
+    </aside>
+
+    <section class="viewport">
+      <div id="scene"></div>
+      <div id="sensorOverlay" class="sensor-overlay"></div>
+      <div class="view-toolbar"><div class="pill">Drag = orbit · Wheel = zoom · Right drag = pan</div><div style="display:flex;gap:8px;align-items:flex-start"><div class="pill" style="line-height:1.55"><span style="color:#ff7a69">●</span> Thermal&nbsp;&nbsp;<span style="color:#6ce0a7">●</span> CO&nbsp;&nbsp;<span style="color:#c899ff">●</span> PM</div><div class="pill" id="scenarioPill">8 × 10 × 3 m</div></div></div>
+    </section>
+
+    <aside class="right">
+      <div class="section">
+        <h3>Analysis</h3>
+        <div class="card"><div class="card-title">Camera floor coverage</div><div class="card-value" id="coverageText">0%</div><div class="tiny">Geometric estimate based on room floor samples and configured FOV.</div><div class="bar"><span id="coverageBar"></span></div></div>
+        <div class="card"><div class="card-title">Blind spot</div><div class="card-value" id="blindText">100%</div><div class="tiny" id="blindHint">Run analysis after placing cameras.</div><div class="bar"><span id="blindBar"></span></div></div>
+        <div class="card"><div class="card-title">Design status</div><div class="card-value" id="statusText" style="font-size:22px">NOT ANALYZED</div><div class="tiny" id="statusHint">Use Auto Design or Analyze.</div></div>
+        <button class="btn primary" id="analyzeBtn" style="width:100%">Analyze Design</button>
+      </div>
+      <div class="section"><h3>Recommended Actions</h3><div id="recommendations"><div class="rec"><b>Ready to design</b><p>Set room dimensions and click Auto Design.</p></div></div></div>
+      <div class="section"><h3>Recommended Sensor Coordinates</h3><div class="legendbox"><b>Sensor markers are shown directly in the 3D room:</b> Thermal = coral, CO = green, PM = purple. Each marker has a vertical locator line and a floor ring. XYZ uses the floor-center origin. Thermal nodes are aimed into the monitored volume; CO and PM nodes are spatially distributed to avoid clustering. Choose <b>Scenario-aware</b> only for a controlled test chamber where the source location is known.</div><div id="placementPlan"><div class="tiny" style="margin-top:8px">Add sensors or use Auto Design to generate coordinates.</div></div></div>
+      <div class="section"><h3>Installed Devices</h3><div id="deviceList"></div></div>
+      <div class="section"><button class="btn" id="summaryBtn" style="width:100%">Design Summary / Export</button></div>
+    </aside>
+  </main>
+
+  <footer class="footer"><div>v2.2 Reference-informed conceptual simulator — XYZ placement is an engineering heuristic, not certified detector spacing / code compliance.</div><div class="status"><span>Area <b id="areaF">80 m²</b></span><span>Volume <b id="volF">240 m³</b></span><span>Devices <b id="devF">0</b></span></div></footer>
+</div>
+
+<div class="modal" id="modal"><div class="modal-box"><button class="btn small close" id="closeModal">Close</button><h2>Design Summary</h2><div class="report" id="report"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" id="downloadReport">Download Report (.txt)</button><button class="btn" id="downloadJSON">Download Scenario (.json)</button></div></div></div>
+<div class="modal" id="refModal"><div class="modal-box"><button class="btn small close" id="closeRefModal">Close</button><h2>Reference & Placement Basis</h2>
+<div class="notice" style="margin-bottom:10px"><b>Important:</b> the project file supports the sensing roles and lists the device datasheets. It does not prescribe certified installation coordinates. Therefore, XYZ positions generated here are clearly marked as <b>geometry-based engineering heuristics</b> for conceptual test-chamber design.</div>
+<div class="refitem"><div><span class="badge-source">PROJECT SOURCE</span></div><b>Spatiotemporal Vision and Sensor Fusion for Robust Fire Detection in Dusty Environments</b><p>The project architecture uses RGB vision with Thermal Array, CO and PM sensing. Thermal and CO are used as confirmation channels for combustion-related evidence, while PM supports separation of dust/smoke particulate conditions.</p></div>
+<div class="refitem"><div><span class="badge-source">REFERENCED IN PROJECT</span></div><b>MLX90640 32×24 IR Array Datasheet — Melexis</b><p>Listed in the project references for the thermal-array device. Exact FOV/package and installation constraints must be verified for the part actually purchased.</p></div>
+<div class="refitem"><div><span class="badge-source">REFERENCED IN PROJECT</span></div><b>ZE03 Electrochemical CO Module Datasheet — Winsen</b><p>Listed in the project references for CO measurement. Final enclosure, airflow exposure and mounting instructions must follow the selected module documentation.</p></div>
+<div class="refitem"><div><span class="badge-source">REFERENCED IN PROJECT</span></div><b>PMS5003 Datasheet — Plantower</b><p>Listed in the project references for particulate measurement. Final inlet/outlet orientation and airflow clearance must be checked against the actual sensor documentation.</p></div>
+<div class="refitem"><div><span class="badge-heuristic">SIMULATOR HEURISTIC</span></div><b>Placement algorithm used in this v2</b><p>Thermal: upper corners/perimeter with line-of-sight toward the room volume. CO: distributed wall/perimeter nodes at a representative vertical level. PM: representative interior sampling positions with wall clearance. Coordinates scale automatically with room dimensions and device quantity.</p></div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const deg=Math.PI/180;
+
+const state={
+ room:{w:8,l:10,h:3,type:'Test chamber',wall:'glass',grid:1},
+ env:{fire:true,smoke:true,dust:true,smokeDensity:35,dustDensity:60,light:65,fireX:65,fireZ:58,fireSize:1},
+ cameraProfile:'oakd', hfov:81, vfov:55, camQty:1, mount:'corner', placementPolicy:'balanced',
+ cameras:[], sensors:[], analysis:{coverage:0,blind:100,status:'NOT ANALYZED',recs:[]}
+};
+const profiles={
+ oakd:{name:'Luxonis OAK-D',type:'Camera',cap:'RGB + stereo depth + edge AI'},
+ c310:{name:'Logitech C310',type:'Camera',cap:'RGB camera'},
+ custom:{name:'Custom RGB Camera',type:'Camera',cap:'Configurable'},
+ mlx90640:{name:'MLX90640',type:'Thermal',cap:'Thermal array'},
+ amg8833:{name:'AMG8833',type:'Thermal',cap:'Thermal array'},
+ customThermal:{name:'Custom Thermal',type:'Thermal',cap:'Configurable thermal'},
+ ze07co:{name:'Winzen ZE07-CO',type:'CO',cap:'Carbon monoxide'},
+ genericCO:{name:'Generic CO',type:'CO',cap:'Carbon monoxide'},
+ pms5003:{name:'Plantower PMS5003',type:'PM',cap:'Particulate matter'},
+ pms7003:{name:'Plantower PMS7003',type:'PM',cap:'Particulate matter'},
+ genericPM:{name:'Generic PM',type:'PM',cap:'Particulate matter'}
+};
+let scene,camera,renderer,controls,roomGroup,deviceGroup,envGroup,gridHelper,fireObj,ambient,dirLight;
+const sensorMeshes=new Map();
+const sensorScreenTags=new Map();
+
+function init3D(){
+ const host=$('scene');
+ scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x08111d,0.012);
+ camera=new THREE.PerspectiveCamera(48,host.clientWidth/host.clientHeight,0.05,300);
+ camera.position.set(13,11,14);
+ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(host.clientWidth,host.clientHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputEncoding=THREE.sRGBEncoding; host.appendChild(renderer.domElement);
+ controls=new THREE.OrbitControls(camera,renderer.domElement); controls.enableDamping=true; controls.dampingFactor=.06; controls.target.set(0,1,0); controls.maxDistance=80; controls.minDistance=2;
+ ambient=new THREE.HemisphereLight(0xa8cfff,0x18202a,0.85); scene.add(ambient);
+ dirLight=new THREE.DirectionalLight(0xffffff,1.1); dirLight.position.set(-6,12,-4); dirLight.castShadow=true; scene.add(dirLight);
+ roomGroup=new THREE.Group();deviceGroup=new THREE.Group();envGroup=new THREE.Group();scene.add(roomGroup,deviceGroup,envGroup);
+ rebuildRoom(); updateEnvironment(); renderDevices();
+ window.addEventListener('resize',resize3D); animate();
+}
+function resize3D(){const h=$('scene');camera.aspect=h.clientWidth/h.clientHeight;camera.updateProjectionMatrix();renderer.setSize(h.clientWidth,h.clientHeight)}
+function animate(){requestAnimationFrame(animate);controls.update(); if(fireObj){fireObj.rotation.y+=0.008; fireObj.scale.y=1+Math.sin(performance.now()*0.008)*0.06;} animateParticles();updateSensorScreenTags();renderer.render(scene,camera)}
+function clearGroup(g){while(g.children.length){let o=g.children.pop();o.traverse?.(x=>{x.geometry?.dispose?.();x.material?.dispose?.()})}}
+function mat(color,op=.25,wire=false){return new THREE.MeshStandardMaterial({color,transparent:op<1,opacity:op,side:THREE.DoubleSide,roughness:.65,metalness:.05,wireframe:wire})}
+function rebuildRoom(){
+ clearGroup(roomGroup); const {w,l,h,wall,grid}=state.room;
+ const floor=new THREE.Mesh(new THREE.BoxGeometry(w,.06,l),mat(0x152945,.92));floor.position.y=-.03;floor.receiveShadow=true;roomGroup.add(floor);
+ const op=wall==='solid'?.55:wall==='wire'?.2:.18, wire=wall==='wire';
+ const wallM=mat(0x5d89b4,op,wire);
+ const back=new THREE.Mesh(new THREE.PlaneGeometry(w,h),wallM.clone());back.position.set(0,h/2,-l/2);roomGroup.add(back);
+ const left=new THREE.Mesh(new THREE.PlaneGeometry(l,h),wallM.clone());left.rotation.y=Math.PI/2;left.position.set(-w/2,h/2,0);roomGroup.add(left);
+ const right=left.clone();right.position.x=w/2;roomGroup.add(right);
+ const ceilM=mat(0x34506e,.05,wire);const ceil=new THREE.Mesh(new THREE.PlaneGeometry(w,l),ceilM);ceil.rotation.x=Math.PI/2;ceil.position.y=h;roomGroup.add(ceil);
+ gridHelper=new THREE.GridHelper(Math.max(w,l),Math.ceil(Math.max(w,l)/grid),0x3f668f,0x23384f);gridHelper.scale.set(w/Math.max(w,l),1,l/Math.max(w,l));gridHelper.position.y=.005;roomGroup.add(gridHelper);
+ const edge=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,h,l)),new THREE.LineBasicMaterial({color:0x547aa2,transparent:true,opacity:.55}));edge.position.y=h/2;roomGroup.add(edge);
+ $('scenarioPill').textContent=`${w} × ${l} × ${h} m`; $('areaF').textContent=`${(w*l).toFixed(1)} m²`; $('volF').textContent=`${(w*l*h).toFixed(1)} m³`;
+ controls.target.set(0,h*.35,0); renderDevices(); updateEnvironment();
+}
+function makeLabel(text,color='#dcecff'){
+ const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.fillStyle='rgba(5,12,22,.84)';x.roundRect?.(2,2,252,60,10);x.fill();x.font='600 21px Segoe UI';x.fillStyle=color;x.textAlign='center';x.textBaseline='middle';x.fillText(text,128,32);const t=new THREE.CanvasTexture(c);const sm=new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false,depthWrite:false});const s=new THREE.Sprite(sm);s.scale.set(1.9,.48,1);s.renderOrder=100;return s;
+}
+function deviceColor(type){return type==='Camera'?0x55b8ff:type==='Thermal'?0xff7a69:type==='CO'?0x6ce0a7:0xc899ff}
+function cameraPosition(i,n){const {w,l,h}=state.room;const y=h-.18,margin=.15;const corners=[[-w/2+margin,y,-l/2+margin],[w/2-margin,y,l/2-margin],[w/2-margin,y,-l/2+margin],[-w/2+margin,y,l/2-margin]];if(state.mount==='corner')return corners[i%4];if(state.mount==='opposite')return corners[(i*1)%4];const t=(i+1)/(n+1);return [-w/2+margin+(w-2*margin)*t,y,-l/2+margin];}
+function placeCameras(qty=state.camQty){
+ state.cameras=[];for(let i=0;i<qty;i++){const [x,y,z]=cameraPosition(i,qty);state.cameras.push({id:'CAM-'+(i+1),model:state.cameraProfile,name:profiles[state.cameraProfile].name,type:'Camera',x,y,z,target:{x:0,y:state.room.h*.28,z:0},hfov:state.hfov,vfov:state.vfov})}renderDevices();analyze();
+}
+function addSensors(){
+ const adds=[[$('thermalModel').value,+$('thermalQty').value],[$('coModel').value,+$('coQty').value],[$('pmModel').value,+$('pmQty').value]];
+ for(const [model,q] of adds)for(let i=0;i<q;i++){const p=profiles[model];state.sensors.push({id:p.type.toUpperCase()+'-'+(state.sensors.filter(s=>s.type===p.type).length+1),model,name:p.name,type:p.type,x:0,y:1.5,z:0})}
+ autoPlaceSensors(false);renderDevices();analyze();
+}
+function perimeterCandidates(w,l,h,y,margin=.3){
+ const xL=-w/2+margin,xR=w/2-margin,zB=-l/2+margin,zF=l/2-margin;
+ return [
+  {x:xL,y,z:zB,mount:'Upper/side wall · corner A'}, {x:xR,y,z:zF,mount:'Upper/side wall · corner C'},
+  {x:xR,y,z:zB,mount:'Upper/side wall · corner B'}, {x:xL,y,z:zF,mount:'Upper/side wall · corner D'},
+  {x:0,y,z:zB,mount:'Wall midpoint · Z−'}, {x:xR,y,z:0,mount:'Wall midpoint · X+'},
+  {x:0,y,z:zF,mount:'Wall midpoint · Z+'}, {x:xL,y,z:0,mount:'Wall midpoint · X−'}
+ ];
+}
+function interiorCandidates(w,l,h,y){
+ return [
+  {x:0,y,z:0,mount:'Representative room center'},
+  {x:-w*.22,y,z:-l*.22,mount:'Interior quadrant A'}, {x:w*.22,y,z:l*.22,mount:'Interior quadrant C'},
+  {x:w*.22,y,z:-l*.22,mount:'Interior quadrant B'}, {x:-w*.22,y,z:l*.22,mount:'Interior quadrant D'},
+  {x:0,y,z:-l*.28,mount:'Interior Z−'}, {x:w*.28,y,z:0,mount:'Interior X+'}, {x:0,y,z:l*.28,mount:'Interior Z+'}, {x:-w*.28,y,z:0,mount:'Interior X−'}
+ ];
+}
+function placementTarget(type){
+ const {w,l,h}=state.room;
+ if(state.placementPolicy==='scenario' && state.env.fire){return {x:(state.env.fireX/100-.5)*w,y:Math.min(h*.35,.9),z:(state.env.fireZ/100-.5)*l};}
+ return {x:0,y:h*.32,z:0};
+}
+function autoPlaceSensors(render=true){
+ const {w,l,h}=state.room;const by={Thermal:[],CO:[],PM:[]};state.sensors.forEach(s=>by[s.type]?.push(s));
+ const margin=clamp(Math.min(w,l)*.045,.18,.45);
+ const thermalY=clamp(h-margin,1.2,h-.12);const thermalC=perimeterCandidates(w,l,h,thermalY,margin);const tTarget=placementTarget('Thermal');
+ by.Thermal.forEach((s,i)=>{const c=thermalC[i%thermalC.length];Object.assign(s,c);s.target={...tTarget};s.placementClass='Reference-informed geometry heuristic';s.reason=state.placementPolicy==='scenario'?'Upper perimeter line-of-sight, aimed toward the controlled test-source region.':'Upper perimeter line-of-sight, aimed toward the monitored room volume.';s.basis='Project thermal-confirmation role + room geometry';});
+ const coY=clamp(Math.min(1.8,h*.58),.85,h-.35);const coC=perimeterCandidates(w,l,h,coY,Math.max(.28,margin));
+ by.CO.forEach((s,i)=>{const c=coC[(i*2+1)%coC.length];Object.assign(s,c);s.target=null;s.placementClass='Reference-informed geometry heuristic';s.reason='Distributed perimeter sampling point to capture CO trend without clustering all nodes in one location.';s.basis='Project CO-trend confirmation role + distributed sampling heuristic';});
+ const pmY=clamp(Math.min(1.5,h*.5),.75,h-.4);const pmC=interiorCandidates(w,l,h,pmY);
+ by.PM.forEach((s,i)=>{const c=pmC[i%pmC.length];Object.assign(s,c);s.target=null;s.placementClass='Reference-informed geometry heuristic';s.reason='Representative particulate sampling position with separation from corners/walls to support dust/smoke condition characterization.';s.basis='Project PM dust/smoke discrimination role + representative sampling heuristic';});
+ if(render){renderDevices();analyze()}
+}
+function sensorClass(type){return type==='Thermal'?'thermal':type==='CO'?'co':'pm'}
+function ensureSensorScreenTags(){
+ const host=$('sensorOverlay'); if(!host)return;
+ const ids=new Set(state.sensors.map(s=>s.id));
+ for(const [id,el] of sensorScreenTags){if(!ids.has(id)){el.remove();sensorScreenTags.delete(id)}}
+ state.sensors.forEach(d=>{
+   let el=sensorScreenTags.get(d.id);
+   if(!el){el=document.createElement('div');el.className='sensor-screen-tag '+sensorClass(d.type);host.appendChild(el);sensorScreenTags.set(d.id,el)}
+   el.className='sensor-screen-tag '+sensorClass(d.type);
+   el.innerHTML=`<span class="pin"></span>${d.id}<small>${d.name}<br>X ${d.x.toFixed(2)} · Y ${d.y.toFixed(2)} · Z ${d.z.toFixed(2)} m</small>`;
+ });
+}
+function updateSensorScreenTags(){
+ const host=$('scene'); if(!host || !camera)return;
+ const w=host.clientWidth,h=host.clientHeight;
+ ensureSensorScreenTags();
+ state.sensors.forEach(d=>{
+   const el=sensorScreenTags.get(d.id); if(!el)return;
+   const p=new THREE.Vector3(d.x,d.y,d.z).project(camera);
+   const visible=p.z>-1 && p.z<1;
+   const x=(p.x*.5+.5)*w, y=(-p.y*.5+.5)*h;
+   el.style.left=`${clamp(x,58,w-58)}px`; el.style.top=`${clamp(y,50,h-18)}px`;
+   el.style.display=visible?'block':'none';
+ });
+}
+function fitViewToRoom(){
+ const {w,l,h}=state.room;const size=Math.max(w,l,h*2);const d=Math.max(4,size*1.6);
+ camera.position.set(d*.82,d*.68,d*.88);controls.target.set(0,h*.38,0);controls.update();
+}
+function reflowDevicesForRoom(){
+ placeCameras(state.camQty);
+ if(state.sensors.length) autoPlaceSensors(false);
+ renderDevices(); analyze(); fitViewToRoom();
+}
+function renderDevices(){
+ clearGroup(deviceGroup);sensorMeshes.clear();const all=[...state.cameras,...state.sensors];
+ const deviceScale=clamp(Math.min(state.room.w,state.room.l)*.075,.22,.55);
+ // Coordinate axes at the floor-center origin.
+ const axes=new THREE.AxesHelper(Math.min(1.2,Math.min(state.room.w,state.room.l)*.12));axes.position.set(0,.035,0);deviceGroup.add(axes);
+ all.forEach(d=>{const color=deviceColor(d.type);let mesh;if(d.type==='Camera'){
+   mesh=new THREE.Mesh(new THREE.BoxGeometry(.32,.22,.28),new THREE.MeshStandardMaterial({color,metalness:.55,roughness:.28}));
+   mesh.position.set(d.x,d.y,d.z);const target=new THREE.Vector3(d.target.x,d.target.y,d.target.z);mesh.lookAt(target);mesh.castShadow=true;deviceGroup.add(mesh);addFrustum(d,deviceGroup);
+ }else{
+   // Physical-looking sensor body.
+   if(d.type==='Thermal') mesh=new THREE.Mesh(new THREE.BoxGeometry(deviceScale,deviceScale*.72,deviceScale*.78),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.55,metalness:.20,roughness:.32}));
+   else if(d.type==='CO') mesh=new THREE.Mesh(new THREE.CylinderGeometry(deviceScale*.38,deviceScale*.38,deviceScale*.9,24),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.48,metalness:.10,roughness:.45}));
+   else mesh=new THREE.Mesh(new THREE.BoxGeometry(deviceScale*.9,deviceScale*.66,deviceScale*.66),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.48,metalness:.10,roughness:.45}));
+   mesh.position.set(d.x,d.y,d.z);mesh.castShadow=true;
+   if(d.type==='Thermal'&&d.target){mesh.lookAt(new THREE.Vector3(d.target.x,d.target.y,d.target.z));addThermalGuide(d,deviceGroup)}
+   deviceGroup.add(mesh);addCoverageAura(d,deviceGroup);addMountLine(d,deviceGroup);addSensorBeacon(d,deviceGroup);
+ }
+ const lab=makeLabel(`${d.id} · ${d.name}`);lab.position.set(d.x,d.y+Math.max(.42,deviceScale*.9),d.z);deviceGroup.add(lab);sensorMeshes.set(d.id,mesh)});
+ ensureSensorScreenTags();updateSensorScreenTags();updateDeviceList();updatePlacementPlan();$('devF').textContent=all.length;
+}
+function addSensorBeacon(d,g){
+ if(d.type==='Camera')return;
+ const color=deviceColor(d.type);
+ // Glowing locator that remains visible even through the translucent room shell.
+ const beaconR=clamp(Math.min(state.room.w,state.room.l)*.045,.12,.32);
+ const halo=new THREE.Mesh(new THREE.SphereGeometry(beaconR,18,12),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.88,depthTest:false,depthWrite:false}));
+ halo.position.set(d.x,d.y,d.z);halo.renderOrder=90;g.add(halo);
+ const ring=new THREE.Mesh(new THREE.RingGeometry(beaconR*1.35,beaconR*1.9,36),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.88,side:THREE.DoubleSide,depthTest:false,depthWrite:false}));
+ ring.rotation.x=-Math.PI/2;ring.position.set(d.x,.045,d.z);ring.renderOrder=90;g.add(ring);
+ const top=new THREE.Mesh(new THREE.RingGeometry(beaconR*1.15,beaconR*1.65,32),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.72,side:THREE.DoubleSide,depthTest:false,depthWrite:false}));
+ top.position.set(d.x,d.y,d.z);top.lookAt(camera.position);top.renderOrder=90;g.add(top);
+}
+function addMountLine(d,g){if(d.type==='Camera')return;const pts=[new THREE.Vector3(d.x,.03,d.z),new THREE.Vector3(d.x,d.y,d.z)];const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineDashedMaterial({color:deviceColor(d.type),dashSize:.10,gapSize:.055,transparent:true,opacity:.78,depthTest:false,depthWrite:false}));line.computeLineDistances();line.renderOrder=80;g.add(line)}
+function addThermalGuide(d,g){if(!d.target)return;const p1=new THREE.Vector3(d.x,d.y,d.z),p2=new THREE.Vector3(d.target.x,d.target.y,d.target.z);const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([p1,p2]),new THREE.LineBasicMaterial({color:deviceColor(d.type),transparent:true,opacity:.82,depthTest:false,depthWrite:false}));g.add(line)}
+function updatePlacementPlan(){const el=$('placementPlan');if(!el)return;el.innerHTML='';if(!state.sensors.length){el.innerHTML='<div class="tiny" style="margin-top:8px">Add sensors or use Auto Design to generate coordinates.</div>';return;}state.sensors.forEach(d=>{const c=document.createElement('div');c.className='coord-card';const aim=d.target?` · Aim (${d.target.x.toFixed(2)}, ${d.target.y.toFixed(2)}, ${d.target.z.toFixed(2)})`:'';c.innerHTML=`<div class="coord-head"><div class="coord-name">${d.id} · ${d.name}</div><span class="tag">${d.type}</span></div><div class="coord-grid"><div class="coord-cell"><span>X (m)</span><b>${d.x.toFixed(2)}</b></div><div class="coord-cell"><span>Y / height (m)</span><b>${d.y.toFixed(2)}</b></div><div class="coord-cell"><span>Z (m)</span><b>${d.z.toFixed(2)}</b></div></div><div class="coord-note"><b>Mount:</b> ${d.mount||'Recommended point'}${aim}<br>${d.reason||''}</div><span class="basis">${d.basis||'Geometry heuristic'}</span>`;el.appendChild(c)})}
+function addCoverageAura(d,g){let r=d.type==='Thermal'?Math.min(state.room.w,state.room.l)*.22:d.type==='CO'?Math.min(state.room.w,state.room.l)*.28:Math.min(state.room.w,state.room.l)*.25;const geo=new THREE.SphereGeometry(r,24,12);const m=new THREE.MeshBasicMaterial({color:deviceColor(d.type),transparent:true,opacity:.055,depthWrite:false});const s=new THREE.Mesh(geo,m);s.position.set(d.x,d.y,d.z);g.add(s)}
+function addFrustum(d,g){
+ const pos=new THREE.Vector3(d.x,d.y,d.z),tar=new THREE.Vector3(d.target.x,d.target.y,d.target.z),dir=tar.clone().sub(pos).normalize();const dist=Math.min(12,pos.distanceTo(tar)*2.1+2);const up=new THREE.Vector3(0,1,0);let right=new THREE.Vector3().crossVectors(dir,up).normalize();if(right.length()<.1)right.set(1,0,0);up=new THREE.Vector3().crossVectors(right,dir).normalize();const hw=Math.tan(d.hfov*.5*deg)*dist,hh=Math.tan(d.vfov*.5*deg)*dist;const center=pos.clone().add(dir.clone().multiplyScalar(dist));const pts=[center.clone().add(right.clone().multiplyScalar(hw)).add(up.clone().multiplyScalar(hh)),center.clone().add(right.clone().multiplyScalar(-hw)).add(up.clone().multiplyScalar(hh)),center.clone().add(right.clone().multiplyScalar(-hw)).add(up.clone().multiplyScalar(-hh)),center.clone().add(right.clone().multiplyScalar(hw)).add(up.clone().multiplyScalar(-hh))];const vs=[pos,...pts,pos,pts[1],pts[2],pts[3],pts[0]];const seg=[];for(let i=0;i<4;i++){seg.push(pos,pts[i]);seg.push(pts[i],pts[(i+1)%4])}const geom=new THREE.BufferGeometry().setFromPoints(seg);const line=new THREE.LineSegments(geom,new THREE.LineBasicMaterial({color:0x5bbcff,transparent:true,opacity:.5}));g.add(line);
+}
+function updateDeviceList(){const el=$('deviceList');el.innerHTML='';const all=[...state.cameras,...state.sensors];if(!all.length){el.innerHTML='<div class="tiny">No devices placed.</div>';return}all.forEach(d=>{const div=document.createElement('div');div.className='device';div.innerHTML=`<div class="device-head"><div><div class="device-name">${d.id} · ${d.name}</div><div class="device-meta">x ${d.x.toFixed(2)} · y ${d.y.toFixed(2)} · z ${d.z.toFixed(2)}${d.mount?' · '+d.mount:''}</div></div><span class="tag">${d.type}</span>${d.type!=='Camera'?'<button class="remove" title="Remove">✕</button>':''}</div>`;if(d.type!=='Camera')div.querySelector('.remove').onclick=()=>{state.sensors=state.sensors.filter(s=>s!==d);renderDevices();analyze()};el.appendChild(div)})}
+let particles=[];
+function updateEnvironment(){
+ clearGroup(envGroup);particles=[];const e=state.env,{w,l,h}=state.room;ambient.intensity=.2+e.light/100*1.2;dirLight.intensity=.15+e.light/100*1.1;scene.fog.density=.006+(e.smoke?e.smokeDensity*.00014:0)+(e.dust?e.dustDensity*.000055:0);
+ if(e.fire){const x=(e.fireX/100-.5)*w,z=(e.fireZ/100-.5)*l,s=e.fireSize;const flame=new THREE.Mesh(new THREE.ConeGeometry(.18*s,.65*s,18),new THREE.MeshStandardMaterial({color:0xff7a2f,emissive:0xff4200,emissiveIntensity:2,transparent:true,opacity:.9}));flame.position.set(x,.32*s,z);flame.castShadow=true;envGroup.add(flame);const core=new THREE.Mesh(new THREE.ConeGeometry(.09*s,.42*s,16),new THREE.MeshBasicMaterial({color:0xfff0a0,transparent:true,opacity:.95}));core.position.set(x,.28*s,z);envGroup.add(core);const pl=new THREE.PointLight(0xff6a2a,2.4,4*s);pl.position.set(x,.65*s,z);envGroup.add(pl);fireObj=flame}else fireObj=null;
+ if(e.smoke)makeParticles('smoke',Math.floor(e.smokeDensity*1.7),0x7b8796,.08,.42);
+ if(e.dust)makeParticles('dust',Math.floor(e.dustDensity*2.2),0xd3b48c,.025,.55);
+}
+function makeParticles(kind,count,color,size,opacity){const {w,l,h}=state.room;const geo=new THREE.BufferGeometry();const arr=[];for(let i=0;i<count;i++)arr.push((Math.random()-.5)*w,Math.random()*h,(Math.random()-.5)*l);geo.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));const m=new THREE.PointsMaterial({color,size,transparent:true,opacity,depthWrite:false});const p=new THREE.Points(geo,m);p.userData={kind};envGroup.add(p);particles.push(p)}
+function animateParticles(){particles.forEach(p=>{const a=p.geometry.attributes.position.array;for(let i=1;i<a.length;i+=3){a[i]+=p.userData.kind==='smoke'?.0025:.0006;if(a[i]>state.room.h)a[i]=0}p.geometry.attributes.position.needsUpdate=true})}
+function cameraSeesPoint(c,p){const pos=new THREE.Vector3(c.x,c.y,c.z);const forward=new THREE.Vector3(c.target.x,c.target.y,c.target.z).sub(pos).normalize();const to=new THREE.Vector3(p.x,p.y,p.z).sub(pos);const dist=to.length();const nd=to.clone().normalize();const yaw=Math.atan2(nd.x,nd.z)-Math.atan2(forward.x,forward.z);const wrap=Math.atan2(Math.sin(yaw),Math.cos(yaw));const pitch=Math.asin(clamp(nd.y,-1,1))-Math.asin(clamp(forward.y,-1,1));return Math.abs(wrap)<=c.hfov*.5*deg && Math.abs(pitch)<=c.vfov*.5*deg && dist<45}
+function calcCoverage(){if(!state.cameras.length)return 0;const n=28,{w,l}=state.room;let seen=0,total=0;for(let ix=0;ix<n;ix++)for(let iz=0;iz<n;iz++){const p={x:-w/2+w*(ix+.5)/n,y:.05,z:-l/2+l*(iz+.5)/n};total++;if(state.cameras.some(c=>cameraSeesPoint(c,p)))seen++}return Math.round(seen/total*100)}
+function analyze(){const cov=calcCoverage(),blind=100-cov,e=state.env;let score=cov;const types=new Set(state.sensors.map(s=>s.type));if(e.fire&&types.has('Thermal'))score+=5;if(e.fire&&types.has('CO'))score+=5;if((e.dust||e.smoke)&&types.has('PM'))score+=5;if(e.light<35&&!types.has('Thermal'))score-=10;if(e.dustDensity>70&&state.cameraProfile==='c310')score-=4;score=clamp(score,0,100);let status=score>=90?'STRONG':score>=75?'GOOD':score>=55?'REVIEW':'WEAK';const recs=[];if(cov<92)recs.push(['Camera coverage','Add/relocate cameras or widen FOV to reduce blind spots.']);if(e.light<40&&!types.has('Thermal'))recs.push(['Low-light support','Add a thermal sensor to provide a non-RGB confirmation channel.']);if(e.dust&&e.dustDensity>45&&!types.has('PM'))recs.push(['Dust monitoring','Add a PM sensor to quantify particulate conditions during tests.']);if(e.fire&&!types.has('CO'))recs.push(['Combustion indication','Consider a CO sensor as an independent signal channel.']);if(!recs.length)recs.push(['Configuration looks balanced','Coverage and selected sensing modalities are suitable for conceptual testing.']);state.analysis={coverage:cov,blind,status,recs,score};updateAnalysisUI()}
+function updateAnalysisUI(){const a=state.analysis;$('coverageText').textContent=a.coverage+'%';$('coverageBar').style.width=a.coverage+'%';$('blindText').textContent=a.blind+'%';$('blindBar').style.width=a.blind+'%';$('blindHint').textContent=a.blind<=8?'Low geometric blind spot.':'Consider additional camera coverage.';$('statusText').textContent=a.status;$('statusText').style.color=a.status==='STRONG'||a.status==='GOOD'?'var(--good)':a.status==='REVIEW'?'var(--warn)':'var(--bad)';$('statusHint').textContent=`Concept score ${Math.round(a.score||0)}/100`;const r=$('recommendations');r.innerHTML='';a.recs.forEach(x=>{const d=document.createElement('div');d.className='rec';d.innerHTML=`<b>${x[0]}</b><p>${x[1]}</p>`;r.appendChild(d)})}
+function autoDesign(){const A=state.room.w*state.room.l,aspect=Math.max(state.room.w/state.room.l,state.room.l/state.room.w);let q=A<=45&&aspect<1.7?1:A<=120?2:A<=220?3:4;if(state.env.smokeDensity>70||state.env.dustDensity>75)q=Math.min(4,q+1);state.camQty=q;$('camQty').value=q;if(state.env.light<35||state.env.smokeDensity>55)state.cameraProfile='oakd';$('cameraModel').value=state.cameraProfile;placeCameras(q);
+ state.sensors=[];let t=state.env.fire?Math.max(1,Math.ceil(A/70)):0,co=state.env.fire?Math.max(1,Math.ceil(A/90)):0,pm=(state.env.dust||state.env.smoke)?Math.max(1,Math.ceil(A/85)):0;if(state.env.light<35)t=Math.max(t,2);const tm=$('thermalModel').value,cm=$('coModel').value,pmM=$('pmModel').value;for(let i=0;i<t;i++)state.sensors.push({id:'THERMAL-'+(i+1),model:tm,name:profiles[tm].name,type:'Thermal',x:0,y:0,z:0});for(let i=0;i<co;i++)state.sensors.push({id:'CO-'+(i+1),model:cm,name:profiles[cm].name,type:'CO',x:0,y:0,z:0});for(let i=0;i<pm;i++)state.sensors.push({id:'PM-'+(i+1),model:pmM,name:profiles[pmM].name,type:'PM',x:0,y:0,z:0});autoPlaceSensors(false);renderDevices();analyze();fitViewToRoom()}
+function summary(){const a=state.analysis,by=t=>state.sensors.filter(s=>s.type===t);const placementLines=state.sensors.flatMap(s=>[`${s.id} | ${s.name} | X=${s.x.toFixed(2)} m, Y=${s.y.toFixed(2)} m, Z=${s.z.toFixed(2)} m | ${s.mount||'recommended point'}${s.target?` | aim=(${s.target.x.toFixed(2)},${s.target.y.toFixed(2)},${s.target.z.toFixed(2)})`:''}`,`  Basis: ${s.basis||'geometry heuristic'}`,`  Reason: ${s.reason||''}`]);const lines=[
+'FIRE DETECTION ENVIRONMENT DESIGN — CONCEPT SUMMARY','',`Room: ${state.room.w} × ${state.room.l} × ${state.room.h} m`,`Area: ${(state.room.w*state.room.l).toFixed(1)} m²`,`Volume: ${(state.room.w*state.room.l*state.room.h).toFixed(1)} m³`,`Room type: ${state.room.type}`,'',`Camera model: ${profiles[state.cameraProfile].name}`,`Camera quantity: ${state.cameras.length}`,`Configured FOV: H ${state.hfov}° / V ${state.vfov}°`,`Estimated floor coverage: ${a.coverage}%`,`Estimated blind spot: ${a.blind}%`,'',`Thermal: ${by('Thermal').map(s=>s.name).join(', ')||'None'} (${by('Thermal').length})`,`CO: ${by('CO').map(s=>s.name).join(', ')||'None'} (${by('CO').length})`,`PM: ${by('PM').map(s=>s.name).join(', ')||'None'} (${by('PM').length})`,'','RECOMMENDED SENSOR COORDINATES (origin = floor center):',...placementLines,'',`Placement policy: ${state.placementPolicy}`,'','REFERENCE BASIS:','- Project proposal: RGB + Thermal + CO + PM sensor-fusion architecture.','- Project proposal role: Thermal and CO support combustion confirmation; PM supports dust/smoke particulate discrimination.','- Project reference list includes MLX90640 (Melexis), ZE03 CO module (Winsen) and PMS5003 datasheets.','- XYZ coordinates generated by this tool are geometry-based engineering heuristics, not certified detector spacing or manufacturer installation requirements.','',`Environment: Fire ${state.env.fire?'ON':'OFF'}, Smoke ${state.env.smokeDensity}%, Dust ${state.env.dustDensity}%, Light ${state.env.light}%`,`Design status: ${a.status}`,'','Recommended actions:',...a.recs.map((r,i)=>`${i+1}. ${r[0]} — ${r[1]}`),'','NOTE: This tool is a conceptual visualization and layout aid. It does not replace CFD/fire modelling, certified detector spacing, code compliance, or manufacturer installation requirements.'];return lines.join('\n')}
+function download(name,text,type='text/plain'){const b=new Blob([text],{type});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function serialize(){return JSON.stringify({version:'2.2-visible-sensor-placement-fixed',...state},null,2)}
+function loadObject(o){if(!o?.room)return;Object.assign(state,o);syncUIFromState();rebuildRoom();renderDevices();updateEnvironment();analyze()}
+function syncUIFromState(){const r=state.room,e=state.env;[['width',r.w],['length',r.l],['height',r.h]].forEach(([k,v])=>{$(k+'R').value=v;$(k+'N').value=v});$('roomType').value=r.type;$('wallMode').value=r.wall;$('gridSize').value=r.grid;$('cameraModel').value=state.cameraProfile;$('hfov').value=state.hfov;$('vfov').value=state.vfov;$('camQty').value=state.camQty;$('mountStrategy').value=state.mount;$('placementPolicy').value=state.placementPolicy||'balanced';$('smokeR').value=e.smokeDensity;$('smokeV').textContent=e.smokeDensity;$('dustR').value=e.dustDensity;$('dustV').textContent=e.dustDensity;$('lightR').value=e.light;$('lightV').textContent=e.light;$('fireX').value=e.fireX;$('fireZ').value=e.fireZ;$('fireSize').value=e.fireSize;document.querySelectorAll('.switch').forEach(s=>s.classList.toggle('on',!!e[s.dataset.key]))}
+function bind(){
+ [['width','w'],['length','l'],['height','h']].forEach(([id,k])=>{const r=$(id+'R'),n=$(id+'N');const f=v=>{v=+v;state.room[k]=v;r.value=v;n.value=v;rebuildRoom();reflowDevicesForRoom()};r.oninput=e=>f(e.target.value);n.onchange=e=>f(e.target.value)});
+ $('roomType').onchange=e=>state.room.type=e.target.value;$('wallMode').onchange=e=>{state.room.wall=e.target.value;rebuildRoom()};$('gridSize').onchange=e=>{state.room.grid=+e.target.value;rebuildRoom()};
+ $('cameraModel').onchange=e=>{state.cameraProfile=e.target.value;if(e.target.value==='oakd'){$('hfov').value=81;$('vfov').value=55}else if(e.target.value==='c310'){$('hfov').value=60;$('vfov').value=45}state.hfov=+$('hfov').value;state.vfov=+$('vfov').value;placeCameras(state.camQty)};
+ $('hfov').onchange=e=>{state.hfov=+e.target.value;placeCameras()};$('vfov').onchange=e=>{state.vfov=+e.target.value;placeCameras()};$('camQty').onchange=e=>{state.camQty=clamp(+e.target.value,1,8)};$('mountStrategy').onchange=e=>{state.mount=e.target.value;placeCameras()};
+ $('placeCamBtn').onclick=()=>{state.camQty=+$('camQty').value;placeCameras()};$('addSensorsBtn').onclick=addSensors;$('autoPlaceBtn').onclick=()=>{autoPlaceSensors(true);fitViewToRoom()};$('placementPolicy').onchange=e=>{state.placementPolicy=e.target.value;autoPlaceSensors(true)};$('autoBtn').onclick=autoDesign;$('analyzeBtn').onclick=analyze;
+ document.querySelectorAll('.switch').forEach(s=>s.onclick=()=>{s.classList.toggle('on');state.env[s.dataset.key]=s.classList.contains('on');updateEnvironment();analyze()});
+ [['smokeR','smokeDensity','smokeV'],['dustR','dustDensity','dustV'],['lightR','light','lightV']].forEach(([id,k,v])=>$(id).oninput=e=>{state.env[k]=+e.target.value;$(v).textContent=e.target.value;updateEnvironment();analyze()});
+ $('fireX').onchange=e=>{state.env.fireX=+e.target.value;updateEnvironment()};$('fireZ').onchange=e=>{state.env.fireZ=+e.target.value;updateEnvironment()};$('fireSize').onchange=e=>{state.env.fireSize=+e.target.value;updateEnvironment()};
+ $('summaryBtn').onclick=()=>{$('report').textContent=summary();$('modal').classList.add('show')};$('closeModal').onclick=()=>$('modal').classList.remove('show');$('referenceBtn').onclick=()=>$('refModal').classList.add('show');$('closeRefModal').onclick=()=>$('refModal').classList.remove('show');$('downloadReport').onclick=()=>download('fire_environment_design_summary.txt',summary());$('downloadJSON').onclick=()=>download('fire_environment_scenario.json',serialize(),'application/json');
+ $('saveBtn').onclick=()=>download('fire_environment_scenario.json',serialize(),'application/json');$('loadBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{loadObject(JSON.parse(rd.result))}catch{alert('Invalid scenario file')}};rd.readAsText(f)};
+ $('resetBtn').onclick=()=>location.reload();
+}
+init3D();bind();autoDesign();
+})();
+</script>
+</body>
+</html>

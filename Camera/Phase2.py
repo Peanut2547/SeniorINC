@@ -1,4 +1,5 @@
 import argparse
+from collections import deque
 from dataclasses import dataclass
 from datetime import timedelta
 import os
@@ -21,6 +22,10 @@ RGB_SIZE = (PANEL_WIDTH, PANEL_HEIGHT)
 MAX_DEPTH_MM = 5000
 CONFIDENCE_THRESHOLD = 200  # Lower = stricter/better confidence, lower fill rate.
 SYNC_THRESHOLD_MS = 1000 / (2 * FPS)
+QUALITY_WINDOW_FRAMES = 30
+MIN_DEPTH_COVERAGE = 0.5
+MIN_TEMPORAL_VALID_RATIO = 0.8
+MAX_DEPTH_MAD_MM = 100.0
 
 
 @dataclass(slots=True)
@@ -40,6 +45,17 @@ class DepthFeature:
     max_depth_mm: int | None
     depth_coverage: float
     invalid_depth_ratio: float
+
+
+@dataclass(slots=True, frozen=True)
+class DepthQualityFeature:
+    temporal_median_depth_mm: float | None
+    temporal_variance_mm2: float | None
+    mad_mm: float | None
+    temporal_valid_ratio: float
+    window_samples: int
+    state: str
+    reason: str
 
 
 @dataclass(slots=True)
@@ -83,6 +99,74 @@ def extract_depth_feature(depth_roi: np.ndarray) -> DepthFeature:
         depth_coverage=coverage,
         invalid_depth_ratio=1.0 - coverage,
     )
+
+
+class DepthQualityTracker:
+    def __init__(
+        self,
+        window_size: int = QUALITY_WINDOW_FRAMES,
+        min_depth_coverage: float = MIN_DEPTH_COVERAGE,
+        min_temporal_valid_ratio: float = MIN_TEMPORAL_VALID_RATIO,
+        max_mad_mm: float = MAX_DEPTH_MAD_MM,
+    ) -> None:
+        if window_size < 2:
+            raise ValueError("window_size must be at least 2")
+        if not 0.0 <= min_depth_coverage <= 1.0:
+            raise ValueError("min_depth_coverage must be between 0 and 1")
+        if not 0.0 <= min_temporal_valid_ratio <= 1.0:
+            raise ValueError("min_temporal_valid_ratio must be between 0 and 1")
+        if max_mad_mm < 0.0:
+            raise ValueError("max_mad_mm must be zero or greater")
+
+        self.window_size = window_size
+        self.min_depth_coverage = min_depth_coverage
+        self.min_temporal_valid_ratio = min_temporal_valid_ratio
+        self.max_mad_mm = max_mad_mm
+        self._medians: deque[float | None] = deque(maxlen=window_size)
+
+    def update(self, feature: DepthFeature) -> DepthQualityFeature:
+        temporal_value = (
+            feature.median_depth_mm
+            if feature.depth_coverage >= self.min_depth_coverage
+            else None
+        )
+        self._medians.append(temporal_value)
+        valid_values = np.asarray(
+            [value for value in self._medians if value is not None],
+            dtype=np.float64,
+        )
+        window_samples = len(self._medians)
+        valid_ratio = valid_values.size / window_samples
+
+        if valid_values.size:
+            temporal_median = float(np.median(valid_values))
+            temporal_variance = float(np.var(valid_values))
+            mad = float(np.median(np.abs(valid_values - temporal_median)))
+        else:
+            temporal_median = temporal_variance = mad = None
+
+        if feature.median_depth_mm is None:
+            state, reason = "UNKNOWN", "NO_DATA"
+        elif feature.depth_coverage < self.min_depth_coverage:
+            state, reason = "LOW_QUALITY", "LOW_COVERAGE"
+        elif window_samples < self.window_size:
+            state, reason = "UNKNOWN", "WARMUP"
+        elif valid_ratio < self.min_temporal_valid_ratio:
+            state, reason = "UNKNOWN", "TEMPORAL_GAPS"
+        elif mad is not None and mad > self.max_mad_mm:
+            state, reason = "LOW_QUALITY", "UNSTABLE_DEPTH"
+        else:
+            state, reason = "VALID", "OK"
+
+        return DepthQualityFeature(
+            temporal_median_depth_mm=temporal_median,
+            temporal_variance_mm2=temporal_variance,
+            mad_mm=mad,
+            temporal_valid_ratio=valid_ratio,
+            window_samples=window_samples,
+            state=state,
+            reason=reason,
+        )
 
 
 def read_cpu_times() -> tuple[int, int] | None:
@@ -242,7 +326,8 @@ def render(
     dropped: int,
     usb_speed: str,
     health: HealthMetrics,
-) -> None:
+    quality_tracker: DepthQualityTracker,
+) -> DepthQualityFeature:
     rgb_view = canvas[:PANEL_HEIGHT, :PANEL_WIDTH]
     depth_view = canvas[:PANEL_HEIGHT, PANEL_WIDTH:]
     packet_view = canvas[PANEL_HEIGHT:, :PANEL_WIDTH]
@@ -266,6 +351,7 @@ def render(
     cy, cx = packet.depth_mm.shape[0] // 2, packet.depth_mm.shape[1] // 2
     roi = packet.depth_mm[cy - half : cy + half, cx - half : cx + half]
     center_feature = extract_depth_feature(roi)
+    quality = quality_tracker.update(center_feature)
     cv2.rectangle(rgb_view, (cx - half, cy - half), (cx + half, cy + half), (0, 255, 0), 1)
     cv2.rectangle(depth_view, (cx - half, cy - half), (cx + half, cy + half), (255, 255, 255), 1)
 
@@ -291,7 +377,27 @@ def render(
         ),
         f"center coverage  {center_feature.depth_coverage * 100:.1f} %",
         f"center invalid   {center_feature.invalid_depth_ratio * 100:.1f} %",
-        "coverage = valid depth / pixels",
+        (
+            f"temporal median  {quality.temporal_median_depth_mm / 1000:.3f} m"
+            if quality.temporal_median_depth_mm is not None
+            else "temporal median  N/A"
+        ),
+        (
+            f"temporal var     {quality.temporal_variance_mm2:.1f} mm^2"
+            if quality.temporal_variance_mm2 is not None
+            else "temporal var     N/A"
+        ),
+        (
+            f"temporal MAD     {quality.mad_mm:.1f} mm"
+            if quality.mad_mm is not None
+            else "temporal MAD     N/A"
+        ),
+        (
+            f"window valid     {quality.temporal_valid_ratio * 100:.1f} % "
+            f"({quality.window_samples})"
+        ),
+        f"quality state    {quality.state}",
+        f"quality reason   {quality.reason}",
     )
     temperature = f"{health.temperature_c:.1f} C" if health.temperature_c is not None else "N/A"
     system_lines = (
@@ -308,8 +414,8 @@ def render(
         f"target FPS       {FPS}",
     )
     for view, lines in ((packet_view, packet_lines), (system_view, system_lines)):
-        line_step = 28 if len(lines) > 8 else 38
-        font_scale = 0.55 if len(lines) > 8 else 0.65
+        line_step = min(38, max(20, (PANEL_HEIGHT - 54) // max(1, len(lines) - 1)))
+        font_scale = 0.48 if len(lines) > 11 else 0.55 if len(lines) > 8 else 0.65
         for row, text in enumerate(lines):
             cv2.putText(
                 view,
@@ -321,9 +427,16 @@ def render(
                 2 if row == 0 else 1,
                 cv2.LINE_AA,
             )
+    return quality
 
 
-def main(duration_s: float = 0.0) -> None:
+def main(
+    duration_s: float = 0.0,
+    quality_window: int = QUALITY_WINDOW_FRAMES,
+    min_depth_coverage: float = MIN_DEPTH_COVERAGE,
+    min_temporal_valid_ratio: float = MIN_TEMPORAL_VALID_RATIO,
+    max_depth_mad_mm: float = MAX_DEPTH_MAD_MM,
+) -> None:
     pipeline, group_queue, platform = build_pipeline()
     latest: Queue[FramePacket] = Queue(maxsize=1)
     errors: Queue[Exception] = Queue()
@@ -344,6 +457,13 @@ def main(duration_s: float = 0.0) -> None:
     peak_ram = 0.0
     max_temperature = None
     health = HealthMetrics()
+    quality_tracker = DepthQualityTracker(
+        window_size=quality_window,
+        min_depth_coverage=min_depth_coverage,
+        min_temporal_valid_ratio=min_temporal_valid_ratio,
+        max_mad_mm=max_depth_mad_mm,
+    )
+    quality_counts = {"VALID": 0, "LOW_QUALITY": 0, "UNKNOWN": 0}
 
     try:
         pipeline.start()
@@ -352,6 +472,12 @@ def main(duration_s: float = 0.0) -> None:
         print(f"DepthAI platform: {platform.name}")
         print(f"USB speed: {usb_speed}")
         print(f"Target FPS: {FPS}; sync threshold: {SYNC_THRESHOLD_MS:.1f} ms")
+        print(
+            f"Depth quality: window {quality_window} frames; "
+            f"coverage >= {min_depth_coverage:.0%}; "
+            f"window valid >= {min_temporal_valid_ratio:.0%}; "
+            f"MAD <= {max_depth_mad_mm:.0f} mm"
+        )
         if usb_speed not in ("SUPER", "SUPER_PLUS"):
             print("WARNING: USB 2.0 detected; RGB is NV12 and only RGB + depth leave the device.")
 
@@ -445,7 +571,7 @@ def main(duration_s: float = 0.0) -> None:
                 print(f"Duration reached: {duration_s:.0f} seconds")
                 break
 
-            render(
+            quality = render(
                 packet,
                 canvas,
                 depth_u16,
@@ -456,7 +582,9 @@ def main(duration_s: float = 0.0) -> None:
                 dropped,
                 usb_speed,
                 health,
+                quality_tracker,
             )
+            quality_counts[quality.state] += 1
             cv2.imshow(WINDOW_NAME, canvas)
             if window_should_close():
                 break
@@ -489,6 +617,14 @@ def main(duration_s: float = 0.0) -> None:
             if max_temperature is not None:
                 print(f"Max temperature  : {max_temperature:.1f} C")
             print(f"Throttle status  : {health.throttle}")
+            if packet_count:
+                print(
+                    "Depth quality    : "
+                    + " / ".join(
+                        f"{state} {count} ({count / packet_count * 100:.1f}%)"
+                        for state, count in quality_counts.items()
+                    )
+                )
             print("=================================")
 
 
@@ -501,8 +637,50 @@ if __name__ == "__main__":
         metavar="SECONDS",
         help="Stop automatically after this many seconds; 0 runs until Q/ESC.",
     )
+    parser.add_argument(
+        "--quality-window",
+        type=int,
+        default=QUALITY_WINDOW_FRAMES,
+        metavar="FRAMES",
+        help="Sliding-window length for temporal depth quality.",
+    )
+    parser.add_argument(
+        "--min-depth-coverage",
+        type=float,
+        default=MIN_DEPTH_COVERAGE,
+        metavar="RATIO",
+        help="Minimum usable-pixel ratio before depth is low quality.",
+    )
+    parser.add_argument(
+        "--min-temporal-valid-ratio",
+        type=float,
+        default=MIN_TEMPORAL_VALID_RATIO,
+        metavar="RATIO",
+        help="Minimum valid-frame ratio inside the temporal window.",
+    )
+    parser.add_argument(
+        "--max-depth-mad-mm",
+        type=float,
+        default=MAX_DEPTH_MAD_MM,
+        metavar="MM",
+        help="Maximum median absolute deviation before depth is unstable.",
+    )
     parser.add_argument("-f", "--f", dest="kernel_file", help=argparse.SUPPRESS)
     arguments = parser.parse_args()
     if arguments.duration < 0:
         parser.error("--duration must be zero or greater")
-    main(arguments.duration)
+    if arguments.quality_window < 2:
+        parser.error("--quality-window must be at least 2")
+    if not 0.0 <= arguments.min_depth_coverage <= 1.0:
+        parser.error("--min-depth-coverage must be between 0 and 1")
+    if not 0.0 <= arguments.min_temporal_valid_ratio <= 1.0:
+        parser.error("--min-temporal-valid-ratio must be between 0 and 1")
+    if arguments.max_depth_mad_mm < 0:
+        parser.error("--max-depth-mad-mm must be zero or greater")
+    main(
+        arguments.duration,
+        arguments.quality_window,
+        arguments.min_depth_coverage,
+        arguments.min_temporal_valid_ratio,
+        arguments.max_depth_mad_mm,
+    )

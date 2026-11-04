@@ -81,13 +81,26 @@ def put_latest(queue: Queue, packet: FramePacket) -> None:
     queue.put_nowait(packet)
 
 
-def extract_depth_feature(depth_roi: np.ndarray) -> DepthFeature:
-    if depth_roi.size == 0:
+def extract_depth_feature(
+    depth_region: np.ndarray,
+    mask: np.ndarray | None = None,
+) -> DepthFeature:
+    """Use a sliced rectangular ROI or nonzero pixels from a same-size mask."""
+    if depth_region.ndim != 2:
+        raise ValueError("depth_region must be a 2D depth image")
+    if mask is not None:
+        if mask.shape != depth_region.shape:
+            raise ValueError("mask shape must match depth_region shape")
+        selected_depth = depth_region[np.asarray(mask, dtype=bool)]
+    else:
+        selected_depth = depth_region.reshape(-1)
+
+    if selected_depth.size == 0:
         return DepthFeature(None, None, None, 0.0, 1.0)
 
-    valid_mask = (depth_roi > 0) & (depth_roi <= MAX_DEPTH_MM)
-    valid_depth = depth_roi[valid_mask]
-    coverage = valid_depth.size / depth_roi.size
+    valid_mask = (selected_depth > 0) & (selected_depth <= MAX_DEPTH_MM)
+    valid_depth = selected_depth[valid_mask]
+    coverage = valid_depth.size / selected_depth.size
 
     if valid_depth.size == 0:
         return DepthFeature(None, None, None, 0.0, 1.0)

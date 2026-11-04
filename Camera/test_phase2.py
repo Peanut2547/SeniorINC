@@ -21,6 +21,36 @@ def main() -> None:
     assert unknown.depth_coverage == 0.0
     assert unknown.invalid_depth_ratio == 1.0
 
+    depth = np.array(
+        [[1000, 0, 5000], [6000, 2000, 3000]],
+        dtype=np.uint16,
+    )
+    rectangular_roi = extract_depth_feature(depth[:, 1:])
+    assert rectangular_roi.median_depth_mm == 3000.0
+    assert rectangular_roi.depth_coverage == 0.75
+
+    mask = np.array(
+        [[1, 1, 0], [0, 1, 0]],
+        dtype=np.uint8,
+    )
+    masked = extract_depth_feature(depth, mask)
+    assert masked.median_depth_mm == 1500.0
+    assert masked.min_depth_mm == 1000
+    assert masked.max_depth_mm == 2000
+    assert np.isclose(masked.depth_coverage, 2 / 3)
+    assert np.isclose(masked.invalid_depth_ratio, 1 / 3)
+
+    empty_mask = extract_depth_feature(depth, np.zeros_like(depth, dtype=np.uint8))
+    assert empty_mask.median_depth_mm is None
+    assert empty_mask.depth_coverage == 0.0
+
+    try:
+        extract_depth_feature(depth, np.ones((1, 1), dtype=np.uint8))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("mask shape mismatch must fail")
+
     tracker = DepthQualityTracker(window_size=3, max_mad_mm=50.0)
     first = tracker.update(
         extract_depth_feature(np.full((2, 2), 1000, dtype=np.uint16))
@@ -72,7 +102,7 @@ def main() -> None:
     )
     assert gaps.state == "UNKNOWN"
     assert gaps.reason == "TEMPORAL_GAPS"
-    print("Phase 2.2 self-check: OK")
+    print("Phase 2.3 self-check: OK")
 
 
 if __name__ == "__main__":
